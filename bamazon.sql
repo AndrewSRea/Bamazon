@@ -9,10 +9,7 @@ CREATE TABLE products (
     price DECIMAL(10,2) not null,
     stock_quantity INTEGER(10) not null;
 
--- change the stock_quantity numbers: "your application should check if your store -- 
--- has enough of the product to meet the customer's request. --
--- If not, the app should log a phrase like Insufficient quantity!, --
--- and then prevent the order from going through.--
+SELECT * FROM products;
 
 INSERT INTO products (item_id, product_name, department_name, price, stock_quantity)
 VALUES (10005001, "Doohicky", "Electronics", 49.99, 50), 
