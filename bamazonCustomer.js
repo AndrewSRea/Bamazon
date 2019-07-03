@@ -1,105 +1,75 @@
-var mysql = require('mysql');
-var inquirer = require('inquirer');
+var mysql = require("mysql");
+var inquirer = require("inquirer");
 
 var connection = mysql.createConnection({
-    host: "localhost",
-    port: 3306,
-    user: "root",
-    password: "",
-    database: "bamazon_db"
+    host:"localhost",
+    port:3306,
+    user:"root",
+    password:"#ertYhj9",
+    database:"bamazon_db"
 })
 
-function start(){
+connection.connect(function(err) {
+    if (err) throw err;
+    console.log("***************WELCOME TO BAMAZON***************");
+    console.log("------------------------------------------------");
+    makeTable();
+})
 
-    connection.query('SELECT * FROM Products', function(err, res){
-        if(err) throw err;
-
-        console.log('_.~"~._.~"~._.~Welcome to BAMazon~._.~"~._.~"~._')
-        console.log('----------------------------------------------------------------------------------------------------')
-
-        for(var i = 0; i<res.length;i++){
-            console.log("ID: " + res[i].ItemID + " | " + "Product: " + res[i].ProductName + " | " + "Department: " + res[i].DepartmentName + " | " + "Price: " + res[i].Price + " | " + "QTY: " + res[i].StockQuantity);
-            console.log('--------------------------------------------------------------------------------------------------')
+var makeTable = function() {
+    connection.query("SELECT * FROM products", function(err,res) {
+        for(var i = 0; i < res.length; i++) {
+            console.log(res[i].item_id + " || " + res[i].product_name
+            + " || " + res[i].department_name + " || " + res[i].price
+            + " || " + res[i].stock_quantity + "\n");
         }
+        promptCustomer(res);
+    })
+}
 
-        console.log(' ');
-        inquirer.prompt([{
-            type: "input",
-            name: "id",
-            message: "What is the ID of the product you would like to purchase?",
-            validate: function(value){
-                if(isNaN(value) == false && parseInt(value) <= res.length && parseInt(value) > 0){
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        },
-        {
-            type: "input",
-            name: "qty",
-            message: "How much would you like to purchase?",
-            validate: function(value){
-                if(isNaN(value)){
-                return false;
-                } else {
-                return true;
-                }
-            }
-        }]).then(function(ans) {
-            var whatToBuy = (ans.id)-1;
-            var howMuchToBuy = parseInt(ans.qty);
-            var grandTotal = parseFloat(((res[whatToBuy].Price)*howMuchToBuy).toFixed(2));
-
-            if(res[whatToBuy].StockQuantity >= howMuchToBuy){
-                
-                connection.query("UPDATE Products SET ? WHERE ?", [
-                {StockQuantity: (res[whatToBuy].StockQuantity - howMuchToBuy)},
-                {ItemID: ans.id}
-                ], function(err, result){
-                    if(err) throw err;
-                    console.log("Success! Your total is $" + grandTotal.toFixed(2) + ". Your item(s) will be shipped to you in 3-5 business days.");
-                });
-
-                connection.query("SELECT * FROM Departments", function(err, deptRes){
-                    if(err) throw err;
-                    var index;
-                    for(var i = 0; i < deptRes.length; i++){
-                        if(deptRes[i].DepartmentName === res[whatToBuy].DepartmentName){
-                            index = i;
+var promptCustomer = function(res) {
+    inquirer.prompt([{
+        type:'input',
+        name:'choice',
+        message:'Please input the ID number of the item you would like to purchase? [Quit with Q]'
+    }]).then(function(answer) {
+        var correct = false;
+        if (answer.choice.toUpperCase() == "Q") {
+            process.exit();
+        }
+        for(var i = 0; i < res.length; i++) {
+            if (res[i].item_id == answer.choice) {
+                correct = true;
+                var product = answer.choice;
+                var id = i;
+                inquirer.prompt({
+                    type:"input",
+                    name:"quantity",
+                    message:"How many would you like to buy?",
+                    validate: function(value) {
+                        if(isNaN(value) == false) {
+                            return true;
+                        } else {
+                            return false;
                         }
                     }
-                
-                connection.query("UPDATE Departments SET ? WHERE ?", [
-                    {TotalSales: deptRes[index].TotalSales + grandTotal},
-                    {DepartmentName: res[whatToBuy].DepartmentName}
-                    ], function(err, deptRes){
-                            if(err) throw err;
-                        
-                        });
-                });
-
-            } else {
-                console.log("Sorry, there's not enough in stock!");
+                }).then(function(answer) {
+                    if ((res[id].stock_quantity - answer.quantity) > 0) {
+                        connection.query("UPDATE products SET stock_quantity='" + (res[id].stock_quantity - 
+                        answer.quantity) + "' WHERE product_name='" + product + "'",function(err,res2) {
+                            console.log("Product bought!");
+                            makeTable();
+                        })
+                    } else {
+                        console.log("Not a valid selection!");
+                        promptCustomer(res);
+                    }
+                })
             }
-
-            reprompt();
-            })
-        })
+        }
+        if (i == res.length && correct == false) {
+            console.log("Not a valid selection!");
+            promptCustomer(res);
+        }
+    }) 
 }
-
-function reprompt() {
-  inquirer.prompt([{
-    type: "confirm",
-    name: "reply",
-    message: "Would you like to purchase another item?"
-  }]).then(function(ans) {
-    if(ans.reply) {
-      start();
-    } else {
-      console.log("See you soon!");
-    }
-  });
-}
-
-start();
